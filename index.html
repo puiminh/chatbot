@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./index.css">
+    <title>Document</title>
+</head>
+<body>
+<div id='bodybox'>
+  <div id='chatborder'>
+    <p id="chatlog7" class="chatlog">&nbsp;</p>
+    <p id="chatlog6" class="chatlog">&nbsp;</p>
+    <p id="chatlog5" class="chatlog">&nbsp;</p>
+    <p id="chatlog4" class="chatlog">&nbsp;</p>
+    <p id="chatlog3" class="chatlog">&nbsp;</p>
+    <p id="chatlog2" class="chatlog">&nbsp;</p>
+    <p id="chatlog1" class="chatlog">&nbsp;</p>
+    <input type="text" name="chat" id="chatbox" placeholder="Hi there! Type here to talk to me." onfocus="placeHolder()">
+  </div>
+</div>
+</body>
+
+<script src="./simple_logic.js" type="module"></script>
+
+<script>
+
+var messages = [], //array that hold the record of each string in chat
+  lastUserMessage = "", //keeps track of the most recent input string from the user
+  botMessage = "", //var keeps track of what the chatbot is going to say
+  botName = 'Chatbot', //name of the chatbot
+  talking = true; //when false the speach function doesn't work
+
+function chatbotResponse() {
+  talking = true;
+
+  
+  try {
+    botMessage = get_response(lastUserMessage);
+  } catch (error) {
+    console.error(error);
+    botMessage = "Sorry, i don't know what you mean..."; //the default message
+  }
+
+}
+
+//this runs each time enter is pressed.
+//It controls the overall input and output
+function newEntry() {
+  //if the message from the user isn't empty then run 
+  if (document.getElementById("chatbox").value != "") {
+    //pulls the value from the chatbox ands sets it to lastUserMessage
+    lastUserMessage = document.getElementById("chatbox").value;
+    //sets the chat box to be clear
+    document.getElementById("chatbox").value = "";
+    //adds the value of the chatbox to the array messages
+    messages.push(lastUserMessage);
+    //Speech(lastUserMessage);  //says what the user typed outloud
+
+    //sets the variable botMessage in response to lastUserMessage
+    chatbotResponse();
+    //add the chatbot's name and message to the array messages
+    messages.push("<b>" + botName + ":</b> " + botMessage);
+    // says the message using the text to speech function written below
+    Speech(botMessage);
+    //outputs the last few array elements of messages to html
+    for (var i = 1; i < 8; i++) {
+      if (messages[messages.length - i])
+        document.getElementById("chatlog" + i).innerHTML = messages[messages.length - i];
+    }
+  }
+}
+
+//text to Speech
+//https://developers.google.com/web/updates/2014/01/Web-apps-that-talk-Introduction-to-the-Speech-Synthesis-API
+function Speech(say) {
+  if ('speechSynthesis' in window && talking) {
+    var utterance = new SpeechSynthesisUtterance(say);
+    //msg.voice = voices[10]; // Note: some voices don't support altering params
+    //msg.voiceURI = 'native';
+    //utterance.volume = 1; // 0 to 1
+    //utterance.rate = 0.1; // 0.1 to 10
+    //utterance.pitch = 1; //0 to 2
+    //utterance.text = 'Hello World';
+    //utterance.lang = 'en-US';
+    speechSynthesis.speak(utterance);
+  }
+}
+
+//runs the keypress() function when a key is pressed
+document.onkeypress = keyPress;
+//if the key pressed is 'enter' runs the function newEntry()
+function keyPress(e) {
+  var x = e || window.event;
+  var key = (x.keyCode || x.which);
+  if (key == 13 || key == 3) {
+    //runs this function when enter is pressed
+    newEntry();
+  }
+  if (key == 38) {
+    console.log('hi')
+      //document.getElementById("chatbox").value = lastUserMessage;
+  }
+}
+
+//clears the placeholder text ion the chatbox
+//this function is set to run when the users brings focus to the chatbox, by clicking on it
+function placeHolder() {
+  document.getElementById("chatbox").placeholder = "";
+}
+
+
+
+
+function message_probability(user_message, recognised_words, single_response=false, required_words=[]) {
+    let message_certainty = 0;
+    let has_required_words = true;
+
+    // Counts how many words are present in each predefined message
+    for (let word of user_message) {
+        if (recognised_words.includes(word)) {
+            message_certainty += 1;
+        }
+    }
+
+    // Calculates the percent of recognised words in a user message
+    let percentage = parseFloat(message_certainty) / parseFloat(recognised_words.length);
+
+    // Checks that the required words are in the string
+    for (let word of required_words) {
+        if (!user_message.includes(word)) {
+            has_required_words = false;
+            break;
+        }
+    }
+
+    // Must either have the required words, or be a single response
+    if (has_required_words || single_response) {
+        return parseInt(percentage * 100);
+    } else {
+        return 0;
+    }
+}
+
+function check_all_messages(message) {
+    let highest_prob_list = {};
+
+    // Simplifies response creation / adds it to the dict
+    function response(bot_response, list_of_words, single_response=false, required_words=[]) {
+        highest_prob_list[bot_response] = message_probability(message, list_of_words, single_response, required_words);
+    }
+
+    // Responses -------------------------------------------------------------------------------------------------------
+    response('Hello!', ['hello', 'hi', 'hey', 'sup', 'heyo'], true);
+    response('See you!', ['bye', 'goodbye'], true);
+    response('I\'m doing fine, and you?', ['how', 'are', 'you', 'doing'], false, ['how']);
+    response('You\'re welcome!', ['thank', 'thanks'], true);
+    response('Thank you!', ['i', 'love', 'code', 'palace'], false, ['code', 'palace']);
+
+
+    let best_match = Object.keys(highest_prob_list).reduce(function(a, b){ return highest_prob_list[a] > highest_prob_list[b] ? a : b });
+
+    return highest_prob_list[best_match] < 1 ? "..." : best_match;
+}
+
+// Used to get the response
+function get_response(user_input) {
+    let split_message = user_input.toLowerCase().split(/[\s,;?!.-]+/);
+    let response = check_all_messages(split_message);
+    return response;
+}
+
+
+
+
+
+</script>
+</html>
