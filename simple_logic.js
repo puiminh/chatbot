@@ -46,7 +46,7 @@ function check_all_messages(message) {
 
     let best_match = Object.keys(highest_prob_list).reduce(function(a, b){ return highest_prob_list[a] > highest_prob_list[b] ? a : b });
 
-    return highest_prob_list[best_match] < 1 ? long.unknown() : best_match;
+    return highest_prob_list[best_match] < 1 ? "..." : best_match;
 }
 
 // Used to get the response
